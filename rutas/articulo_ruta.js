@@ -22,9 +22,9 @@ router.get("/ruta-prueba", articuloController.test)
 // Rutas
 router.post('/crear', articuloController.crear);
 router.get('/ver', articuloController.ver);
-router.get('/uno', articuloController.unArticulo);
+router.get('/uno/:id', articuloController.unArticulo);
 router.delete('/borrar/:id', articuloController.borrar)
-router.put('/edit', articuloController.edit)
+router.put('/edit/:id', articuloController.edit)
 router.post("/subir-imagen", [subidas.single('file0')] ,articuloController.subir),
 router.get("/imagen/:fichero", articuloController.imagen)
 router.get("/buscar/:buscador", articuloController.buscador)

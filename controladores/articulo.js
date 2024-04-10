@@ -10,13 +10,16 @@ const test = (req,res) =>{
 
 const crear = async (req, res) => {
     try {
-      // Verificar que req.body no sea undefined y que tenga las propiedades esperadas
-      if (!req.body || !req.body.titulo || !req.body.contenido || !req.body.fecha_publicacion || !req.body.imagen_url) {
-        return res.status(400).json({ error: true, mensaje: 'Faltan campos obligatorios en la solicitud' });
-      }
-  
+      // Eliminar la verificación de los campos obligatorios
       let arti = "INSERT INTO articulo (titulo, contenido, fecha_publicacion, imagen_url) VALUES ($1, $2, $3, $4)";
-      let values = [req.body.titulo, req.body.contenido, req.body.fecha_publicacion, req.body.imagen_url];
+      
+      // Verificar si los campos están presentes en req.body y asignar valores predeterminados si no lo están
+      let titulo = req.body.titulo || 'Sin título';
+      let contenido = req.body.contenido || 'Sin contenido';
+      let fecha_publicacion = req.body.fecha_publicacion || new Date();
+      let imagen_url = req.body.imagen_url || 'Sin imagen';
+
+      let values = [titulo, contenido, fecha_publicacion, imagen_url];
   
       try {
         let result = await pool.query(arti, values);
@@ -32,43 +35,42 @@ const crear = async (req, res) => {
       res.status(500).json({ error: true, mensaje: 'Error interno del servidor' });
     }
 };
+
   
 
-const ver = async(req,res) =>{
+const ver = async (req, res) => {
     try {
-        // Consulta SQL para seleccionar todos los artículos
-        let sql = 'SELECT * FROM articulo';
-
-        // Ejecutar la consulta utilizando pool.query
+        let sql = 'SELECT * FROM articulo ORDER BY fecha_publicacion DESC'; 
+        
         let result = await pool.query(sql);
 
-        // Verificar si hay resultados
         if (result.rows.length === 0) {
             res.status(404).json({ error: true, codigo: 404, mensaje: 'No se encontraron artículos' });
         } else {
             res.status(200).json({ error: false, codigo: 200, mensaje: 'Artículos encontrados', data: result.rows });
-        } 
-    }catch (e) {
-        res.send({mensaje: 'Hay un error'+ e, error: true})
+        }
+    } catch (e) {
+        res.send({ mensaje: 'Hay un error' + e, error: true })
     }
 }
 
-const unArticulo = async (req, res) => {
-    try {
-        const id = parseInt(req.query.id);
 
+const unArticulo = async (req, res) => {
+    
+    try {
+        const id = req.params.id;
 
         let sql = 'SELECT * FROM articulo WHERE id = $1';
 
         console.log(id);
 
-        const result = await pool.query(sql, [id]); 
+        const result = await pool.query(sql,[id]); 
 
         if (result.rows.length === 0) {
-            return res.status(404).json({ mensaje: "No se encontró ningún artículo con el ID proporcionado", error: true });
+            return res.status(404).json({ mensaje: "No se encontró ningún artículo ", error: true });
         }
 
-        res.status(200).json({ mensaje: result.rows[0], error: false }); // Seleccionar el primer resultado
+        res.status(200).json({ articulo: result.rows[0], error: false }); 
 
     } catch (e) {
         return res.status(404).json({ mensaje: "Hay un error " + e, error: true });
@@ -92,17 +94,27 @@ const borrar = async (req, res) => {
 
 const edit = async (req, res) =>{
     try {
-        if (!req.body || !req.body.id || !req.body.titulo || !req.body.contenido || !req.body.fecha_publicacion || !req.body.imagen_url) {
+        const id = req.params.id; // Obtener el id de la URL
+        
+        if (!id || !req.body || !req.body.titulo || !req.body.contenido || !req.body.imagen_url) {
             return res.status(400).json({ error: true, mensaje: 'Faltan campos obligatorios en la solicitud' });
         }
 
-        // Construir la consulta SQL para actualizar el artículo
         let sql = `UPDATE articulo 
-                   SET titulo = $1, contenido = $2, fecha_publicacion = $3, imagen_url = $4 
-                   WHERE id = $5`;
-        let values = [req.body.titulo, req.body.contenido, req.body.fecha_publicacion, req.body.imagen_url, req.body.id];
+                   SET titulo = $1, contenido = $2`;
 
-        // Ejecutar la consulta SQL
+        let values = [req.body.titulo, req.body.contenido];
+
+        // Agregar fecha_publicacion y su valor si se proporciona en el body
+        if (req.body.fecha_publicacion) {
+            sql += ', fecha_publicacion = $3';
+            values.push(req.body.fecha_publicacion);
+        }
+
+        sql += ` , imagen_url = $${values.length + 1} WHERE id = $${values.length + 2}`;
+        values.push(req.body.imagen_url);
+        values.push(id);
+
         await pool.query(sql, values);
 
         res.status(200).json({ error: false, mensaje: 'Artículo actualizado correctamente' });
@@ -111,6 +123,7 @@ const edit = async (req, res) =>{
         res.status(400).json({mensaje:'Hay un error '+ e, error: true})
     }
 }
+
 
 const subir = async (req,res) =>{
 
